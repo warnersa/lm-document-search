@@ -1,0 +1,868 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LMS Policy Search</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+    <script src="https://accounts.google.com/gsi/client" async defer></script>
+    <script src="https://apis.google.com/js/api.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: #ffce01;
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+            overflow: hidden;
+        }
+
+        .header {
+            background: linear-gradient(135deg, #3d3936 0%, #7e7773 100%);
+            color: white;
+            padding: 30px;
+            text-align: center;
+        }
+
+        .header h1 {
+            font-size: 2.5rem;
+            margin-bottom: 10px;
+            font-weight: 700;
+        }
+
+        .header p {
+            font-size: 1.1rem;
+            opacity: 0.9;
+        }
+
+        .main-content {
+            padding: 40px;
+        }
+
+        .auth-container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 60vh;
+            text-align: center;
+        }
+
+        .auth-title {
+            font-size: 2rem;
+            color: #3d3936;
+            margin-bottom: 15px;
+        }
+
+        .auth-subtitle {
+            color: #7e7773;
+            margin-bottom: 30px;
+            font-size: 1.1rem;
+        }
+
+        .google-signin-btn {
+            background: white;
+            border: 2px solid #e2e8f0;
+            border-radius: 50px;
+            padding: 15px 30px;
+            font-size: 1.1rem;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+        }
+
+        .google-signin-btn:hover {
+            border-color: #ffce00;
+            box-shadow: 0 6px 20px rgba(0,0,0,0.15);
+            transform: translateY(-2px);
+        }
+
+        .user-info {
+            background: white;
+            border-radius: 15px;
+            padding: 20px;
+            margin-bottom: 20px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+
+        .user-details {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+
+        .user-avatar {
+            width: 50px;
+            height: 50px;
+            border-radius: 50%;
+            border: 2px solid #ffce00;
+        }
+
+        .user-name {
+            font-weight: 600;
+            color: #3d3936;
+        }
+
+        .user-email {
+            color: #7e7773;
+            font-size: 0.9rem;
+        }
+
+        .signout-btn {
+            background: #fed7d7;
+            color: #c53030;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 20px;
+            cursor: pointer;
+            font-size: 0.9rem;
+            transition: all 0.3s ease;
+        }
+
+        .signout-btn:hover {
+            background: #feb2b2;
+        }
+
+        .drive-section {
+            background: #f8fafc;
+            border: 2px solid #e2e8f0;
+            border-radius: 15px;
+            padding: 30px;
+            margin-bottom: 30px;
+        }
+
+        .drive-title {
+            font-size: 1.5rem;
+            color: #3d3936;
+            margin-bottom: 20px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .folder-path {
+            background: #fffbeb;
+            border: 1px solid #ffce00;
+            border-radius: 10px;
+            padding: 15px;
+            font-family: monospace;
+            color: #3d3936;
+            margin-bottom: 20px;
+        }
+
+        .sync-btn {
+            background: linear-gradient(135deg, #ffce00 0%, #f6ad00 100%);
+            color: #3d3936;
+            border: none;
+            padding: 12px 25px;
+            border-radius: 50px;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 15px rgba(255, 206, 0, 0.4);
+        }
+
+        .sync-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(255, 206, 0, 0.6);
+        }
+
+        .sync-btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .documents-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+
+        .document-card {
+            background: white;
+            border: 1px solid #e2e8f0;
+            border-radius: 10px;
+            padding: 20px;
+            transition: all 0.3s ease;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+
+        .document-card:hover {
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+            transform: translateY(-2px);
+        }
+
+        .document-icon {
+            font-size: 2rem;
+            margin-bottom: 10px;
+        }
+
+        .document-name {
+            font-weight: 600;
+            color: #3d3936;
+            margin-bottom: 5px;
+            word-break: break-word;
+        }
+
+        .document-meta {
+            color: #7e7773;
+            font-size: 0.9rem;
+        }
+
+        .search-section {
+            margin-bottom: 30px;
+        }
+
+        .search-input {
+            width: 100%;
+            padding: 15px 20px;
+            border: 2px solid #e2e8f0;
+            border-radius: 50px;
+            font-size: 1.1rem;
+            outline: none;
+            transition: all 0.3s ease;
+        }
+
+        .search-input:focus {
+            border-color: #ffce00;
+            box-shadow: 0 0 0 3px rgba(255, 206, 0, 0.1);
+        }
+
+        .search-button {
+            background: linear-gradient(135deg, #3d3936 0%, #7e7773 100%);
+            color: white;
+            border: none;
+            padding: 15px 30px;
+            border-radius: 50px;
+            font-size: 1.1rem;
+            cursor: pointer;
+            margin-top: 15px;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 15px rgba(61, 57, 54, 0.4);
+        }
+
+        .search-button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(61, 57, 54, 0.6);
+        }
+
+        .search-button:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .loading {
+            text-align: center;
+            padding: 40px;
+            color: #718096;
+        }
+
+        .spinner {
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #ffce00;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 20px;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .report-section {
+            background: #f8fafc;
+            border-radius: 15px;
+            padding: 30px;
+            margin-top: 30px;
+        }
+
+        .report-title {
+            font-size: 1.8rem;
+            color: #3d3936;
+            margin-bottom: 20px;
+            text-align: center;
+        }
+
+        .report-summary {
+            background: #fffbeb;
+            border-left: 4px solid #ffce00;
+            padding: 20px;
+            margin-bottom: 30px;
+            border-radius: 0 10px 10px 0;
+        }
+
+        .stats {
+            display: flex;
+            justify-content: space-around;
+            background: white;
+            border-radius: 10px;
+            padding: 20px;
+            margin-bottom: 20px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+
+        .stat-item {
+            text-align: center;
+        }
+
+        .stat-number {
+            font-size: 2rem;
+            font-weight: 700;
+            color: #3d3936;
+        }
+
+        .stat-label {
+            color: #718096;
+            font-size: 0.9rem;
+        }
+
+        .result-item {
+            background: white;
+            border: 1px solid #e2e8f0;
+            border-radius: 10px;
+            padding: 20px;
+            margin-bottom: 20px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+
+        .result-document {
+            font-weight: 600;
+            color: #3d3936;
+            margin-bottom: 15px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .open-drive-btn {
+            background: #e6fffa;
+            color: #2c7a7b;
+            border: 1px solid #38b2ac;
+            padding: 5px 12px;
+            border-radius: 15px;
+            font-size: 0.8rem;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .open-drive-btn:hover {
+            background: #b2f5ea;
+        }
+
+        .result-header {
+            background: #f8fafc;
+            padding: 10px 15px;
+            border-radius: 8px;
+            margin-bottom: 10px;
+            border-left: 3px solid #ffce00;
+        }
+
+        .result-section {
+            font-weight: 600;
+            color: #3d3936;
+            font-size: 0.95rem;
+        }
+
+        .result-page {
+            color: #7e7773;
+            font-size: 0.85rem;
+            margin-top: 5px;
+        }
+
+        .result-context {
+            line-height: 1.6;
+            color: #4a5568;
+            padding-left: 15px;
+            border-left: 2px solid #e2e8f0;
+            margin-left: 10px;
+        }
+
+        .highlight {
+            background: #fffbeb;
+            padding: 2px 4px;
+            border-radius: 3px;
+            font-weight: 600;
+            color: #3d3936;
+            border: 1px solid #ffce00;
+        }
+
+        .export-btn {
+            background: linear-gradient(135deg, #ffce00 0%, #f6ad00 100%);
+            color: #3d3936;
+            border: none;
+            padding: 12px 25px;
+            border-radius: 50px;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            margin-top: 20px;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 15px rgba(255, 206, 0, 0.4);
+        }
+
+        .export-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(255, 206, 0, 0.6);
+        }
+
+        .access-denied {
+            background: #fed7d7;
+            border: 2px solid #e53e3e;
+            border-radius: 15px;
+            padding: 30px;
+            text-align: center;
+            margin: 20px 0;
+        }
+
+        .access-denied h3 {
+            color: #c53030;
+            margin-bottom: 15px;
+        }
+
+        .access-denied p {
+            color: #744210;
+        }
+
+        .no-results {
+            text-align: center;
+            padding: 40px;
+            color: #718096;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>LMS Policy Search</h1>
+            <p>Search policy manuals and handbooks</p>
+        </div>
+
+        <div class="main-content">
+            <!-- Authentication Section -->
+            <div id="authSection" class="auth-container">
+                <h2 class="auth-title">🔐 Secure Access Required</h2>
+                <p class="auth-subtitle">Please sign in with your Lancaster Mennonite Google Workspace account to access the document search system.</p>
+                
+                <button class="google-signin-btn" onclick="signInWithGoogle()">
+                    <svg width="20" height="20" viewBox="0 0 24 24">
+                        <path fill="#4285f4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
+                        <path fill="#34a853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
+                        <path fill="#fbbc05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/>
+                        <path fill="#ea4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/>
+                    </svg>
+                    Sign in with Google Workspace
+                </button>
+                
+                <div id="accessDenied" class="access-denied" style="display: none;">
+                    <h3>❌ Access Denied</h3>
+                    <p>Your Google account is not authorized to access this system. Please contact IT administration or use your Lancaster Mennonite email account.</p>
+                </div>
+            </div>
+
+            <!-- User Info (shown when authenticated) -->
+            <div id="userSection" class="user-info" style="display: none;">
+                <div class="user-details">
+                    <img id="userAvatar" class="user-avatar" src="" alt="User Avatar">
+                    <div>
+                        <div id="userName" class="user-name"></div>
+                        <div id="userEmail" class="user-email"></div>
+                    </div>
+                </div>
+                <button class="signout-btn" onclick="signOut()">Sign Out</button>
+            </div>
+
+            <!-- Main App Content (shown when authenticated) -->
+            <div id="appContent" style="display: none;">
+                <div class="drive-section">
+                    <h3 class="drive-title">
+                        📁 Policy Documents Folder
+                    </h3>
+                    <div class="folder-path" id="folderPath">
+                        /Lancaster Mennonite/Policy Documents/
+                    </div>
+                    <button class="sync-btn" id="syncBtn" onclick="syncWithDrive()">
+                        🔄 Sync with Google Drive
+                    </button>
+                    <p style="margin-top: 15px; color: #7e7773; font-size: 0.9rem;">
+                        <strong>Note:</strong> This searches all PDF documents in the designated Google Drive folder. 
+                        Contact IT to add or update policy documents.
+                    </p>
+                </div>
+
+                <div id="documentsSection" style="display: none;">
+                    <h3>📚 Available Documents</h3>
+                    <div id="documentsGrid" class="documents-grid"></div>
+                </div>
+
+                <div class="search-section">
+                    <h3>Search Keywords</h3>
+                    <input type="text" class="search-input" id="searchInput" 
+                           placeholder="Enter keywords (e.g., 'disciplinary action', 'vacation policy', 'safety procedures')">
+                    <button class="search-button" id="searchButton" onclick="performSearch()">
+                        Search Documents
+                    </button>
+                </div>
+
+                <div id="resultsSection" style="display: none;"></div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Configuration
+        const GOOGLE_CLIENT_ID = '823136706288-v35ts3e24ev75r45flospjgicn3ha4kn.apps.googleusercontent.com';
+        const GOOGLE_API_KEY = 'AIzaSyBVaav4nYBDqLK9NLf8nLKzhnOoOrUyrqU';
+        const POLICY_FOLDER_ID = '1us0q9K1XOlRY0aLPG0y_sLX3BNu1pwC_'; // The ID of your policy documents folder
+        const ALLOWED_DOMAIN = 'lancastermennnonite.org';
+        
+        // You can also specify individual email addresses for more granular control
+        const ALLOWED_USERS = [
+            'warnerps@lancastermennonite.org'
+            // Add more specific email addresses here when ready
+        ];
+        
+        // Global variables
+        let currentUser = null;
+        let accessToken = null;
+        let driveDocuments = [];
+        let extractedTexts = [];
+
+        // Set up PDF.js worker
+        pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+
+        // Initialize Google APIs
+        function initializeGoogleAuth() {
+            window.google.accounts.id.initialize({
+                client_id: GOOGLE_CLIENT_ID,
+                callback: handleCredentialResponse,
+                auto_select: false,
+                cancel_on_tap_outside: false
+            });
+
+            // Initialize Google API client
+            gapi.load('auth2:client', initializeGapiClient);
+        }
+
+        function initializeGapiClient() {
+            gapi.client.init({
+                apiKey: GOOGLE_API_KEY,
+                clientId: GOOGLE_CLIENT_ID,
+                discoveryDocs: ['https://www.googleapis.com/discovery/v1/apis/drive/v3/rest'],
+                scope: 'https://www.googleapis.com/auth/drive.readonly'
+            });
+        }
+
+        // Handle Google Sign-In response
+        function handleCredentialResponse(response) {
+            try {
+                const userInfo = parseJwt(response.credential);
+                console.log('User info:', userInfo);
+                
+                if (isUserAuthorized(userInfo)) {
+                    currentUser = userInfo;
+                    // Get access token for Drive API
+                    authenticateForDriveAccess();
+                } else {
+                    showAccessDenied();
+                }
+            } catch (error) {
+                console.error('Authentication error:', error);
+                showAccessDenied();
+            }
+        }
+
+        // Authenticate for Google Drive access
+        function authenticateForDriveAccess() {
+            const authInstance = gapi.auth2.getAuthInstance();
+            authInstance.signIn().then((googleUser) => {
+                accessToken = googleUser.getAuthResponse().access_token;
+                showAuthenticatedContent();
+            }).catch((error) => {
+                console.error('Drive authentication error:', error);
+                showAccessDenied();
+            });
+        }
+
+        // Parse JWT token
+        function parseJwt(token) {
+            const base64Url = token.split('.')[1];
+            const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
+            const jsonPayload = decodeURIComponent(atob(base64).split('').map(function(c) {
+                return '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2);
+            }).join(''));
+            return JSON.parse(jsonPayload);
+        }
+
+        // Check if user is authorized
+        function isUserAuthorized(userInfo) {
+            const email = userInfo.email;
+            const domain = email.split('@')[1];
+            return domain === ALLOWED_DOMAIN;
+        }
+
+        // Show authenticated content
+        function showAuthenticatedContent() {
+            document.getElementById('authSection').style.display = 'none';
+            document.getElementById('userSection').style.display = 'flex';
+            document.getElementById('appContent').style.display = 'block';
+            
+            // Populate user info
+            document.getElementById('userName').textContent = currentUser.name;
+            document.getElementById('userEmail').textContent = currentUser.email;
+            document.getElementById('userAvatar').src = currentUser.picture || 'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" width="50" height="50"><circle cx="25" cy="25" r="20" fill="%23cccccc"/></svg>';
+            
+            // Initialize app event listeners
+            initializeAppEventListeners();
+        }
+
+        // Show access denied message
+        function showAccessDenied() {
+            document.getElementById('accessDenied').style.display = 'block';
+        }
+
+        // Sign in with Google
+        window.signInWithGoogle = function() {
+            console.log('Sign in button clicked');
+            try {
+                if (typeof google !== 'undefined' && google.accounts && google.accounts.id) {
+                    console.log('Attempting to prompt sign-in');
+                    google.accounts.id.prompt();
+                } else {
+                    console.error('Google Identity Services not properly loaded');
+                    alert('Google sign-in is not available. Please refresh the page and try again.');
+                }
+            } catch (error) {
+                console.error('Error during sign-in:', error);
+                alert('Sign-in error: ' + error.message);
+            }
+        };
+
+        // Sign out
+        function signOut() {
+            currentUser = null;
+            accessToken = null;
+            driveDocuments = [];
+            extractedTexts = [];
+            
+            document.getElementById('authSection').style.display = 'flex';
+            document.getElementById('userSection').style.display = 'none';
+            document.getElementById('appContent').style.display = 'none';
+            document.getElementById('accessDenied').style.display = 'none';
+            document.getElementById('documentsSection').style.display = 'none';
+            document.getElementById('resultsSection').style.display = 'none';
+        }
+
+        // Initialize app event listeners
+        function initializeAppEventListeners() {
+            // Enter key search
+            document.getElementById('searchInput').addEventListener('keypress', (e) => {
+                if (e.key === 'Enter') {
+                    performSearch();
+                }
+            });
+        }
+
+        // Sync with Google Drive
+        async function syncWithDrive() {
+            const syncBtn = document.getElementById('syncBtn');
+            syncBtn.disabled = true;
+            syncBtn.textContent = '🔄 Syncing...';
+
+            try {
+                // Fetch files from Google Drive folder
+                const response = await gapi.client.drive.files.list({
+                    q: `'${POLICY_FOLDER_ID}' in parents and mimeType='application/pdf' and trashed=false`,
+                    fields: 'files(id,name,size,modifiedTime,webViewLink)',
+                    orderBy: 'name'
+                });
+
+                driveDocuments = response.result.files;
+                
+                if (driveDocuments.length === 0) {
+                    alert('No PDF documents found in the specified folder. Please check the folder configuration.');
+                    return;
+                }
+
+                displayDocuments();
+                await processAllDocuments();
+
+            } catch (error) {
+                console.error('Error syncing with Drive:', error);
+                alert('Error accessing Google Drive. Please check permissions and folder ID.');
+            } finally {
+                syncBtn.disabled = false;
+                syncBtn.textContent = '🔄 Sync with Google Drive';
+            }
+        }
+
+        // Display documents from Drive
+        function displayDocuments() {
+            const documentsSection = document.getElementById('documentsSection');
+            const documentsGrid = document.getElementById('documentsGrid');
+            
+            documentsSection.style.display = 'block';
+            documentsGrid.innerHTML = '';
+
+            driveDocuments.forEach(doc => {
+                const card = document.createElement('div');
+                card.className = 'document-card';
+                
+                const size = doc.size ? `${Math.round(doc.size / 1024)} KB` : 'Unknown size';
+                const date = doc.modifiedTime ? new Date(doc.modifiedTime).toLocaleDateString() : 'Unknown date';
+                
+                card.innerHTML = `
+                    <div class="document-icon">📄</div>
+                    <div class="document-name">${doc.name}</div>
+                    <div class="document-meta">
+                        Size: ${size}<br>
+                        Modified: ${date}
+                    </div>
+                `;
+                
+                card.addEventListener('click', () => {
+                    window.open(doc.webViewLink, '_blank');
+                });
+                
+                documentsGrid.appendChild(card);
+            });
+        }
+
+        // Process all documents for text extraction
+        async function processAllDocuments() {
+            extractedTexts = [];
+            
+            for (const doc of driveDocuments) {
+                try {
+                    const text = await extractTextFromDriveFile(doc);
+                    extractedTexts.push({
+                        name: doc.name,
+                        id: doc.id,
+                        text: text.fullText,
+                        pages: text.pages,
+                        webViewLink: doc.webViewLink
+                    });
+                } catch (error) {
+                    console.error(`Error processing ${doc.name}:`, error);
+                }
+            }
+            
+            console.log(`Processed ${extractedTexts.length} documents for search`);
+        }
+
+        // Extract text from Google Drive PDF file
+        async function extractTextFromDriveFile(driveFile) {
+            try {
+                // Download the file from Google Drive
+                const response = await fetch(`https://www.googleapis.com/drive/v3/files/${driveFile.id}?alt=media`, {
+                    headers: {
+                        'Authorization': `Bearer ${accessToken}`
+                    }
+                });
+                
+                if (!response.ok) {
+                    throw new Error('Failed to download file from Drive');
+                }
+                
+                const arrayBuffer = await response.arrayBuffer();
+                const pdf = await pdfjsLib.getDocument(arrayBuffer).promise;
+                const pages = [];
+                let fullText = '';
+
+                for (let i = 1; i <= pdf.numPages; i++) {
+                    const page = await pdf.getPage(i);
+                    const textContent = await page.getTextContent();
+                    
+                    // Extract text with positioning information
+                    const textItems = textContent.items.map(item => ({
+                        text: item.str,
+                        fontSize: item.height,
+                        x: item.transform[4],
+                        y: item.transform[5]
+                    }));
+
+                    // Identify headings (larger font size, typically)
+                    const avgFontSize = textItems.reduce((sum, item) => sum + item.fontSize, 0) / textItems.length;
+                    const headings = textItems.filter(item => item.fontSize > avgFontSize * 1.2 && item.text.trim().length > 5);
+                    
+                    const pageText = textItems.map(item => item.text).join(' ');
+                    
+                    pages.push({
+                        number: i,
+                        text: pageText,
+                        headings: headings.map(h => h.text.trim()).filter(h => h.length > 0),
+                        textItems: textItems
+                    });
+                    fullText += pageText + ' ';
+                }
+
+                return {
+                    fullText: fullText.trim(),
+                    pages: pages
+                };
+            } catch (error) {
+                console.error('Error extracting text from PDF:', error);
+                throw error;
+            }
+        }
+
+        // Search documents
+        function searchDocuments(keywords) {
+            const keywordList = keywords.toLowerCase().split(/\s+/).filter(k => k.length > 2);
+            const results = [];
+
+            extractedTexts.forEach((doc, docIndex) => {
+                const matches = [];
+
+                doc.pages.forEach(page => {
+                    const sentences = page.text.split(/[.!?]+/);
+                    
+                    sentences.forEach((sentence, sentenceIndex) => {
+                        const lowerSentence = sentence.toLowerCase();
+                        const matchedKeywords = keywordList.filter(keyword => 
+                            lowerSentence.includes(keyword)
+                        );
+
+                        if (matchedKeywords.length > 0) {
+                            const relevantHeading = findRelevantHeading(page, sentence, sentenceIndex);
+                            
+                            matches.push({
+                                keywords: matchedKeywords,
+                                sentence: sentence.trim(),
+                                context: getContext(sentences, sentenceIndex),
+                                relevance: calculateRelevance(sentence, matchedKeywords),
+                                pageNumber: page.number,
+                                heading: relevantHeading || 'Content'
+                            });
+                        }
+                    });
+                });
+
+                if (matches.length > 0) {
+                    const uniqueMatches = matches
+                        .sort((a, b) => b.relev
